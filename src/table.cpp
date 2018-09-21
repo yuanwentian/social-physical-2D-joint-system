@@ -104,23 +104,12 @@ void scroll(GLFWwindow *window, double xoffset, double yoffset)
 
 
 /////TRIAL: test wall contact
-double xdis; // X distance between predator and prey
-double ydis; // Y distance between predator and prey
-double l; // length between predator and prey
 
-void ApplyForce(const mjModel* m, mjData* d)
+
+void InitializeForce(const mjModel* m, mjData* d)
 {
-
-xdis=d->qpos[2]-d->qpos[0];
-ydis=d->qpos[3]-d->qpos[1];
-l=pow(xdis,2)+pow(ydis,2);
-
-			  d -> ctrl[0] = {xdis/l*10};
-			  d -> ctrl[1] = {ydis/l*10};
-			  d -> ctrl[2] = {(random(100)-50.0)/10};
-			  d -> ctrl[3] = {(random(100)-50.0)/10};
-			  d -> ctrl[4] = {(random(100)-50.0)/10};
-			  d -> ctrl[5] = {(random(100)-50.0)/10};
+d -> ctrl[0] = {0.00000001};
+		d -> ctrl[1] = {0};
 
 }
 
@@ -177,6 +166,7 @@ int main(int argc, const char **argv)
     // print some arguments
     // m -> nu = 2;    
     // run main loop, target real-time simulation and 60 fps rendering
+int timeCounter=50;
     while (!glfwWindowShouldClose(window))
     {
         // advance interactive simulation for 1/60 sec
@@ -194,55 +184,82 @@ int main(int argc, const char **argv)
         } */
 
 
-/////output Position Velocity Control To Files
-//std::vector<double> position(d->qpos,d->qpos+2);
-//output data to position.txt; 
-const char* positionFilename = "position.txt";
-std::ofstream positionFile(positionFilename, std::ios::app);
-const char* velocityFilename = "velocity.txt";
-std::ofstream velocityFile(velocityFilename, std::ios::app);
-const char* accelerationFilename = "acceleration.txt";
-std::ofstream accelerationFile(accelerationFilename, std::ios::app);
-const char* contactFilename = "contact.txt";
-std::ofstream contactFile(contactFilename, std::ios::app);
-//positionFile.open(positionFilename, std::ios::out | std::ios::trunc);
 
          while ((d->time - simstart < 1.0 / 200.0) && (d->time < 1000))
         {
-  
+     
             mj_step1(m, d);
             std::cout << "-------------------------------------" << std::endl; 
   	    std::cout << "simulation time: " << d->time << std::endl; 
-   	    std::cout << "number of generalized coordinates = dim(qpos)" << m->nq << std::endl; 
-   	    std::cout << "number of degrees of freedom = dim(qvel):" << m->nv << std::endl; 
-   	    std::cout << "number of actuators/controls = dim(ctrl)" << m->nu << std::endl; 
-   	    std::cout << "number of activation states = dim(act)" << m->na << std::endl; 
-	    std::cout << "qpos: " << d->qpos[0] <<  " " << d->qpos[1] <<" " << d->qpos[2] <<" " << d->qpos[3] << " " << d->qpos[4] << std::endl; 
-	    std::cout << "qvel: " << d->qvel[0] <<  " " << d->qvel[1] <<" " << d->qvel[2] <<" " << d->qvel[3] << " " << d->qvel[4] << std::endl; 
-	    std::cout << "qacc: " << d->qacc[0] <<  " " << d->qacc[1] <<" " << d->qacc[2] <<" " << d->qacc[3] << " " << d->qacc[4] << std::endl; 
-   	    std::cout << "d->act: " << d->act[0] <<  " " << d->act[1] << std::endl;
+	    std::cout << "qpos: " << d->qpos[0] <<  " " << d->qpos[1] <<" " << d->qpos[2] <<" " << d->qpos[3] << " " << d->qpos[4] << " " << d->qpos[5] << std::endl; 
+	    std::cout << "qvel: " << d->qvel[0] <<  " " << d->qvel[1] <<" " << d->qvel[2] <<" " << d->qvel[3] << " " << d->qvel[4] << " " << d->qvel[5] << std::endl; 
             std::cout << "d->ctrl:" << d->ctrl[0] << " " << d->ctrl[1] <<" " << d->ctrl[2] <<" " << d->ctrl[3] <<" " << d->ctrl[4] <<" " << d->ctrl[5] <<std::endl;
-            std::cout << "d->qfrc_applied:" << d->qfrc_applied[0] << std::endl;
      	 
-    
+       
 
-  	    //apply force
-	    ApplyForce(m, d);
-		
-
-
+  	    //apply random force
+	
+  	    //apply follow force
 
 
-   
+   InitializeForce(m, d);
+
+ 	if (d -> time >30)
+      {
+
+	
+		const double PredatorForce = 10;
+		double PreyForceX = (random(100)-50.0)/0.25;
+		double PreyForceY = (random(100)-50.0)/0.25;
+		double DraggerForceX = -(random(100)-50.0)/0.25;
+		double DraggerForceY = -(random(100)-50.0)/0.25;
+
+		timeCounter= timeCounter + 1;
+		const int Counterthreshold = 50;
+		double xpredatorstart = 3.5;
+		double ypredatorstart = 3.5;
+		double  xDistance; // X distance between predator and prey
+		double  yDistance; // Y distance between predator and prey
+		double  l; // length between predator and prey
+		double  cosPP; // length between predator and prey
+		double  sinPP; // length between predator and prey
+		double  PredatorForceX; // X distance between predator and prey
+		double  PredatorForceY; // Y distance between predator and prey
+		xDistance=((d->qpos[0]+xpredatorstart)-d->qpos[2]);
+		yDistance=((d->qpos[1]+ypredatorstart)-d->qpos[3]);
+		l=sqrt(pow(xDistance,2)+pow(yDistance,2));
+		cosPP=xDistance/l;
+		sinPP=yDistance/l;
+
+		PredatorForceX=-PredatorForce*cosPP;
+		PredatorForceY=-PredatorForce*sinPP;
+		std::cout << "xDistance:" << xDistance << " " << "yDistance:"<< yDistance <<" " << "l:"<< l <<std::endl;
+		std::cout << "xForce:" << PredatorForceX << " " << "yForce:"<< PredatorForceY <<std::endl;
+	        std::cout << "timeCounter:" << timeCounter <<std::endl;
+
+   	     
+		d -> ctrl[0] = {PredatorForceX};
+		d -> ctrl[1] = {PredatorForceY};
+
+			  d -> ctrl[2] = {PreyForceX};
+			  d -> ctrl[3] = {PreyForceY};
+			if (timeCounter % Counterthreshold ==0)
+			{
+			  d -> ctrl[4] = {DraggerForceX};
+			  d -> ctrl[5] = {DraggerForceX};
+			}
+			else
+			{
+ 			  d -> ctrl[4] = {0};
+			  d -> ctrl[5] = {0};
+			}
+
+	}			
             std::cout << "-------------------------------------" << std::endl;
             mj_step2(m, d);
 
         } 
-                positionFile.close(); 
-                velocityFile.close();  
-                accelerationFile.close();   
-		contactFile.close();   
-
+           
 
 
         // get framebuffer viewport
