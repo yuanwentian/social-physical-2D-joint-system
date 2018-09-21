@@ -1,2 +1,0 @@
-/home/taharabun/Projects/social-physical/social-physical-2D-joint-system/buildSample/CMakeFiles/rebuild_cache.dir
-/home/taharabun/Projects/social-physical/social-physical-2D-joint-system/buildSample/CMakeFiles/edit_cache.dir
