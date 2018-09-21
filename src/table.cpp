@@ -19,6 +19,8 @@
 #include "mujoco.h"
 #include "glfw3.h"
 
+#define random(x)(rand()%x)
+
 // MuJoCo data structures
 mjModel *m = NULL; // MuJoCo model
 mjData *d = NULL;  // MuJoCo data
@@ -102,19 +104,24 @@ void scroll(GLFWwindow *window, double xoffset, double yoffset)
 
 
 /////TRIAL: test wall contact
-void testWallContact(const mjModel* m, mjData* d)
+double xdis; // X distance between predator and prey
+double ydis; // Y distance between predator and prey
+double l; // length between predator and prey
+
+void ApplyForce(const mjModel* m, mjData* d)
 {
-    
-if (d -> time < 0.1)
-		{  
-			  d -> ctrl[0] = {0.04};;
-		}
-if (d -> time > 0.1 && d -> time < 1)
-		{  
-			  d -> ctrl[0] = {0};;
-		}
-      std::cout << "nconmax:" << m->nconmax << std::endl; 
-      std::cout << "contactpos[0]:" << d->contact->pos[0] << std::endl; 
+
+xdis=d->qpos[2]-d->qpos[0];
+ydis=d->qpos[3]-d->qpos[1];
+l=pow(xdis,2)+pow(ydis,2);
+
+			  d -> ctrl[0] = {xdis/l*10};
+			  d -> ctrl[1] = {ydis/l*10};
+			  d -> ctrl[2] = {(random(100)-50.0)/10};
+			  d -> ctrl[3] = {(random(100)-50.0)/10};
+			  d -> ctrl[4] = {(random(100)-50.0)/10};
+			  d -> ctrl[5] = {(random(100)-50.0)/10};
+
 }
 
 
@@ -200,7 +207,7 @@ const char* contactFilename = "contact.txt";
 std::ofstream contactFile(contactFilename, std::ios::app);
 //positionFile.open(positionFilename, std::ios::out | std::ios::trunc);
 
-         while ((d->time - simstart < 1.0 / 200.0) && (d->time < 1))
+         while ((d->time - simstart < 1.0 / 200.0) && (d->time < 1000))
         {
   
             mj_step1(m, d);
@@ -214,60 +221,20 @@ std::ofstream contactFile(contactFilename, std::ios::app);
 	    std::cout << "qvel: " << d->qvel[0] <<  " " << d->qvel[1] <<" " << d->qvel[2] <<" " << d->qvel[3] << " " << d->qvel[4] << std::endl; 
 	    std::cout << "qacc: " << d->qacc[0] <<  " " << d->qacc[1] <<" " << d->qacc[2] <<" " << d->qacc[3] << " " << d->qacc[4] << std::endl; 
    	    std::cout << "d->act: " << d->act[0] <<  " " << d->act[1] << std::endl;
-            std::cout << "d->ctrl:" << d->ctrl[0] << " " << d->ctrl[1] <<std::endl;
+            std::cout << "d->ctrl:" << d->ctrl[0] << " " << d->ctrl[1] <<" " << d->ctrl[2] <<" " << d->ctrl[3] <<" " << d->ctrl[4] <<" " << d->ctrl[5] <<std::endl;
             std::cout << "d->qfrc_applied:" << d->qfrc_applied[0] << std::endl;
-	    std::cout << "efc_force[0](njmax x 1):" << d->efc_force[0]<< " " << d->efc_force[1]<< " " << d->efc_force[2]<< " " << d->efc_force[3]<< std::endl;
-	    std::cout << "qfrc_constraint(nv x 1):" << d->qfrc_constraint[0]<< " " << d->qfrc_constraint[1]<< " " << d->qfrc_constraint[2]<< " " << d->qfrc_constraint[3]<< " " << d->qfrc_constraint[4]<< " " <<  d->qfrc_constraint[5]<< " " << d->qfrc_constraint[6]<< std::endl;
-	    std::cout << "actuator_force(nu x 1):" << d->actuator_force[0]<< " " << d->actuator_force[1]<< " " << d->actuator_force[2]<< " " << d->actuator_force[3]<< " " << d->actuator_force[4]<< " " << d->actuator_force[5]<< " " << d->actuator_force[6]<< " " << d->actuator_force[7]<< " " << d->actuator_force[8]<<std::endl;
-	    std::cout << "qfrc_actuator(nv x 1):" << d->qfrc_actuator[0]<< " " << d->qfrc_actuator[1]<< " " << d->qfrc_actuator[2]<< " " << d->qfrc_actuator[3]<< " " << d->qfrc_actuator[4]<< " " << d->qfrc_actuator[5]<< " " << d->qfrc_actuator[6]<< " " << d->qfrc_actuator[7]<< " " << d->qfrc_actuator[8]<< std::endl;		
-	  std::cout << "number of equality constraints: " << d->ne << std::endl; 
-	  std::cout << "number of friction constraints: " << d->nf << std::endl; 
-	  std::cout << "number of constraints: " << d->nefc << std::endl; 
-	  std::cout << "number of detected contacts: " << d->ncon << std::endl; 
-     	  std::cout << "contact postion:" << d->contact->pos[0] << " " <<d->contact->pos[1] << " " <<d->contact->pos[2] << std::endl; 
      	 
     
- for (int i = 0; i < d->ncon; ++i) {
-        mjContact& contact = d->contact[i];
-       std::cout << "contact distance:" << contact.dist << std::endl; 
-    }
+
+  	    //apply force
+	    ApplyForce(m, d);
+		
 
 
-		//if (d -> time < 0.2){  
-		//	testForceOnAccCorrect(m, d);
-		//}
-  		//if (d -> time > 0.2 && d -> time < 1){  
-			testWallContact(m, d);
-		//}
 
-//derive contact force
- 	mjtNum result[6];
 
-	 if (d->ncon == 0){	  
-             		contactFile << 0 << " " << 0 <<" " << 0 <<" " << 0 <<" " << 0 <<" " << 0<< std::endl;
-			}
-
-        for (int i = 0; i < d->ncon; i++) {
-	  mj_contactForce(m,d,i,result);
-          std::cout << "contactForce result: "  << "id: "   << i << " " << "result: " << result[0] << " " << result[1] <<" " << result[2] <<" " << result[3] <<" " << result[4] <<" " << result[5] <<std::endl; 
-			contactFile << result[0] << " " << result[1] <<" " << result[2] <<" " << result[3] <<" " << result[4] <<" " << result[5]<< std::endl;
-			
-	}
-          std::cout << "-------------------------------------" << std::endl; 
- 
-           for (int i = 0; i < m->nq; i++) {
-		positionFile << d->qpos[i] << " ";
-		}
-		positionFile << std::endl;
-           for (int i = 0; i < m->nv; i++) {
-		velocityFile << d->qvel[i] << " ";
-		}
-		velocityFile << std::endl;
-	   for (int i = 0; i < m->nv; i++) {
-		accelerationFile << d->qacc[i] << " ";
-		}
-		accelerationFile << std::endl;
-
+   
+            std::cout << "-------------------------------------" << std::endl;
             mj_step2(m, d);
 
         } 
