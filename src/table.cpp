@@ -256,15 +256,15 @@ int timeCounter=50;
  			  d -> ctrl[4] = {0};
 			  d -> ctrl[5] = {0};
 			}
-
-	}			
-            std::cout << "-------------------------------------" << std::endl;
             mj_step2(m, d);
 
             if (xDistance < 0.4 || yDistance < 4)
 			{
 			  d -> time = d -> time - 2;
 			}
+	}			
+            std::cout << "-------------------------------------" << std::endl;
+           
 
         } 
            
