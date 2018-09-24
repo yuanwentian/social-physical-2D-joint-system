@@ -19,6 +19,9 @@
 #include "mujoco.h"
 #include "glfw3.h"
 
+#include "SocialPhysical/dynamic.hpp"
+
+
 #define random(x)(rand()%x)
 
 // MuJoCo data structures
@@ -257,6 +260,11 @@ int timeCounter=50;
 	}			
             std::cout << "-------------------------------------" << std::endl;
             mj_step2(m, d);
+
+            if (xDistance < 0.4 || yDistance < 4)
+			{
+			  d -> time = d -> time - 2;
+			}
 
         } 
            
