@@ -10,17 +10,15 @@
 #include "math.h"
 #include <iostream>
 
-
 #include <string>
 #include <vector>
 #include <fstream>
 #include <sstream>
 
-
 #include "mujoco.h"
 #include "glfw3.h"
 
-#include "SocialPhysical/dynamic.hpp"
+#include "SocialPhysical/policy.hpp"
 
 
 
@@ -117,8 +115,6 @@ d -> ctrl[1] = {0};
 }
 
 
-
-
 //main functon
 int main(int argc, const char **argv)
 {
@@ -184,6 +180,11 @@ int main(int argc, const char **argv)
     int rejectionSamplingFrame=50;
     int rejectionSamplingCounter = 0;
     int renderIndex=0;
+    const int NumberOfPosition = m -> nq;
+    const int NumberOfVelocity = m -> nv;
+    const int NumberOfControl = m -> nu;  // nq ; nv; nu all depends on number of joints
+    const int NumberOfJointForEachBody = 2;
+
 
     const char* positionFilename = "position.txt";
     std::ofstream positionFile(positionFilename, std::ios::app);
@@ -212,18 +213,19 @@ int main(int argc, const char **argv)
         } */
        
 
-         while ((d->time - simstart < 1.0 / 200.0) && (d->time < 2000))
+         while ((d->time - simstart < 1.0 / 200.0) && (d->time < 1000))
         {
             
-            if((d->time < 1000))
+            if((d->time < 500))
             {
                 mj_step1(m, d);
                     
-                    positionIndex=positionIndex+6;
-                    velocityIndex=velocityIndex+6;
-                    accelerationIndex=accelerationIndex+6;
+                    positionIndex = positionIndex + NumberOfPosition * NumberOfJointForEachBody;   
+                    velocityIndex = velocityIndex + NumberOfVelocity * NumberOfJointForEachBody;
+                    accelerationIndex = accelerationIndex + NumberOfPosition * NumberOfJointForEachBody;
                     std::cout << "-------------------------------------" << std::endl; 
                     std::cout << "simulation time: " << d->time << std::endl; 
+                    std::cout << "nq: " << NumberOfPosition << "nv: " << NumberOfVelocity <<"nu: " << NumberOfControl <<std::endl; 
                     std::cout << "qpos: " << d->qpos[0] <<  " " << d->qpos[1] <<" " << d->qpos[2] <<" " << d->qpos[3] << " " << d->qpos[4] << " " << d->qpos[5] << std::endl; 
                     std::cout << "qvel: " << d->qvel[0] <<  " " << d->qvel[1] <<" " << d->qvel[2] <<" " << d->qvel[3] << " " << d->qvel[4] << " " << d->qvel[5] << std::endl; 
                     std::cout << "d->ctrl:" << d->ctrl[0] << " " << d->ctrl[1] <<" " << d->ctrl[2] <<" " << d->ctrl[3] <<" " << d->ctrl[4] <<" " << d->ctrl[5] <<std::endl;
@@ -261,7 +263,7 @@ int main(int argc, const char **argv)
                     //	double DraggerForceY = -(random(100)-50.0)/0.25;
 
                     const int ForceRatio = 10;
-                    const double PredatorForce = 0.5 * ForceRatio;
+                    const double PredatorForce = 1.5 * ForceRatio;
                     const double range_from  = 0;
                     const double range_to    = 100;
                     std::random_device                  rand_dev;
@@ -271,10 +273,10 @@ int main(int argc, const char **argv)
                     std::cout << distr(generator) << '\n';
         
           
-                    double PreyForceX = (distr(generator)-50.0)/2.5 * ForceRatio;
-                    double PreyForceY = (distr(generator)-50.0)/2.5 * ForceRatio;
-                    double DraggerForceX = -(distr(generator)-50.0)/2.5 * ForceRatio;
-                    double DraggerForceY = -(distr(generator)-50.0)/2.5 * ForceRatio;
+                    double PreyForceX = (distr(generator)-50.0)/5 * ForceRatio;
+                    double PreyForceY = (distr(generator)-50.0)/5 * ForceRatio;
+                    double DraggerForceX = -(distr(generator)-50.0)/25 * ForceRatio;
+                    double DraggerForceY = -(distr(generator)-50.0)/25 * ForceRatio;
 
                     timeCounter= timeCounter + 1;
             
@@ -336,12 +338,11 @@ int main(int argc, const char **argv)
                     
                     //rejection sampling frames
 
-            
+                    
                     //if ((abs(PPDistanceX) < 0.25) || (abs PPDistanceY) < 0.25))
-                    if ((PPl < 1) || (DPl<1))
+                    if ((PPl < 1) || (DPl< 1))
                     {
                                 rejectionSamplingCounter = rejectionSamplingCounter + 1;
-
                                 position.erase(position.end()-6*rejectionSamplingFrame,position.end());
                                 velocity.erase(velocity.end()-6*rejectionSamplingFrame,velocity.end());
                                 acceleration.erase(acceleration.end()-6*rejectionSamplingFrame,acceleration.end());   
@@ -359,7 +360,7 @@ int main(int argc, const char **argv)
                                     d->qacc[i] = acceleration[accelerationIndex+i];
                                     std::cout << "d->qpos" << i << ":" << d->qpos[i] << std::endl;
                                     std::cout << "position"<< i << ":" << position[positionIndex+i] << std::endl;
-                                    }
+                                }
 
                             //  if (rejectionSamplingCounter % 50 == 0){                                    //rejectionSampilingCounter is used to double RejectionSampling if it is not working very well
                             //      rejectionSamplingFrame = rejectionSamplingFrame*2;
