@@ -10,6 +10,7 @@
 #include "math.h"
 #include <iostream>
 
+
 #include <string>
 #include <vector>
 #include <fstream>
@@ -18,7 +19,8 @@
 #include "mujoco.h"
 #include "glfw3.h"
 
-#include "SocialPhysical/policy.hpp"
+//#include "SocialPhysical/policy.hpp"
+#include <random>
 
 
 
@@ -107,7 +109,7 @@ void scroll(GLFWwindow *window, double xoffset, double yoffset)
 /////TRIAL: test wall contact
 
 
-void InitializeForce(const mjModel* m, mjData* d)
+void initializeForce(const mjModel* m, mjData* d)
 {
 d -> ctrl[0] = {0.000000000001};
 d -> ctrl[1] = {0};
@@ -168,22 +170,23 @@ int main(int argc, const char **argv)
     // run main loop, target real-time simulation and 60 fps rendering
 
     int timeCounter=50; // to decide when to start to make demo convenient
-    const int Counterthreshold = 10;  //to modify dragger frames
-    const int catchThreshold = 0.25;
+    const int CounterThreshold = 10;  //to modify dragger frames
+    const int catchThreshold = 1;
     int startTime=timeCounter/10;
     std::vector<double> position;
     std::vector<double> velocity;
     std::vector<double> acceleration;
-    int positionIndex=-6;
-    int velocityIndex=-6;
-    int accelerationIndex=-6;
     int rejectionSamplingFrame=50;
     int rejectionSamplingCounter = 0;
     int renderIndex=0;
-    const int NumberOfPosition = m -> nq;
-    const int NumberOfVelocity = m -> nv;
-    const int NumberOfControl = m -> nu;  // nq ; nv; nu all depends on number of joints
+    const int NumberOfPosition = (m -> nq) / 2;
+    const int NumberOfVelocity = (m -> nv) / 2;
+    const int NumberOfAcceleration = (m -> nq) / 2;  // nq ; nv; nu all depends on number of joints
     const int NumberOfJointForEachBody = 2;
+    int positionIndex=-NumberOfPosition * NumberOfJointForEachBody;
+    int velocityIndex=-NumberOfVelocity * NumberOfJointForEachBody;
+    int accelerationIndex=-NumberOfAcceleration * NumberOfJointForEachBody;
+  
 
 
     const char* positionFilename = "position.txt";
@@ -192,8 +195,6 @@ int main(int argc, const char **argv)
     std::ofstream velocityFile(velocityFilename, std::ios::app);
     const char* accelerationFilename = "acceleration.txt";
     std::ofstream accelerationFile(accelerationFilename, std::ios::app);
-    const char* trajectoryFilename = "trajectory.txt";
-    std::ofstream trajectoryFile(trajectoryFilename, std::ios::app);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -216,25 +217,25 @@ int main(int argc, const char **argv)
          while ((d->time - simstart < 1.0 / 200.0) && (d->time < 1000))
         {
             
-            if((d->time < 500))
+            if((d->time < 100))
             {
                 mj_step1(m, d);
                     
                     positionIndex = positionIndex + NumberOfPosition * NumberOfJointForEachBody;   
                     velocityIndex = velocityIndex + NumberOfVelocity * NumberOfJointForEachBody;
-                    accelerationIndex = accelerationIndex + NumberOfPosition * NumberOfJointForEachBody;
+                    accelerationIndex = accelerationIndex + NumberOfAcceleration * NumberOfJointForEachBody;
                     std::cout << "-------------------------------------" << std::endl; 
                     std::cout << "simulation time: " << d->time << std::endl; 
-                    std::cout << "nq: " << NumberOfPosition << "nv: " << NumberOfVelocity <<"nu: " << NumberOfControl <<std::endl; 
+                    std::cout << "nq: " << NumberOfPosition << "nv: " << NumberOfVelocity <<"nu: " << NumberOfAcceleration <<std::endl; 
                     std::cout << "qpos: " << d->qpos[0] <<  " " << d->qpos[1] <<" " << d->qpos[2] <<" " << d->qpos[3] << " " << d->qpos[4] << " " << d->qpos[5] << std::endl; 
                     std::cout << "qvel: " << d->qvel[0] <<  " " << d->qvel[1] <<" " << d->qvel[2] <<" " << d->qvel[3] << " " << d->qvel[4] << " " << d->qvel[5] << std::endl; 
                     std::cout << "d->ctrl:" << d->ctrl[0] << " " << d->ctrl[1] <<" " << d->ctrl[2] <<" " << d->ctrl[3] <<" " << d->ctrl[4] <<" " << d->ctrl[5] <<std::endl;
                     
-                    for( int i = 0; i < 6; i = i + 1 )
+                    for( int i = 0; i < NumberOfPosition * NumberOfJointForEachBody; i = i + 1 )
                     {
                         position.push_back(d->qpos[i]);
                         velocity.push_back(d->qvel[i]);
-                        acceleration.push_back(d->qacc[i]);
+                        acceleration.push_back(d->qacc[i]);                  
                     }
 
                     std::cout<<"position.size:"<<position.size()<<"     "<<std::endl;
@@ -250,7 +251,7 @@ int main(int argc, const char **argv)
                     //apply follow force
 
 
-                    InitializeForce(m, d);
+                    initializeForce(m, d);
 
                 if (d -> time > startTime)
                     {
@@ -321,7 +322,7 @@ int main(int argc, const char **argv)
                     d -> ctrl[2] = {PreyForceX};
                     d -> ctrl[3] = {PreyForceY};
 
-                    if (timeCounter % Counterthreshold ==0)
+                    if (timeCounter % CounterThreshold ==0)
                     {
                         d -> ctrl[4] = {DraggerForceX};
                         d -> ctrl[5] = {DraggerForceX};
@@ -336,25 +337,23 @@ int main(int argc, const char **argv)
                     std::cout << "velocity.size"<<velocity.size()<<std::endl;
                     std::cout << "velocityIndex"<<velocityIndex<<std::endl;
                     
-                    //rejection sampling frames
-
-                    
+                    //rejection sampling frames                    
                     //if ((abs(PPDistanceX) < 0.25) || (abs PPDistanceY) < 0.25))
-                    if ((PPl < 1) || (DPl< 1))
+                    if ((PPl < catchThreshold) || (DPl< catchThreshold))
                     {
                                 rejectionSamplingCounter = rejectionSamplingCounter + 1;
-                                position.erase(position.end()-6*rejectionSamplingFrame,position.end());
-                                velocity.erase(velocity.end()-6*rejectionSamplingFrame,velocity.end());
-                                acceleration.erase(acceleration.end()-6*rejectionSamplingFrame,acceleration.end());   
-                                positionIndex=positionIndex-6*rejectionSamplingFrame;
-                                velocityIndex=velocityIndex-6*rejectionSamplingFrame;
-                                accelerationIndex=accelerationIndex-6*rejectionSamplingFrame;         
+                                position.erase(position.end()-NumberOfPosition * NumberOfJointForEachBody * rejectionSamplingFrame,position.end());
+                                velocity.erase(velocity.end()-NumberOfVelocity * NumberOfJointForEachBody * rejectionSamplingFrame,velocity.end());
+                                acceleration.erase(acceleration.end()-NumberOfAcceleration * NumberOfJointForEachBody * rejectionSamplingFrame,acceleration.end());   
+                                positionIndex=positionIndex-NumberOfPosition * NumberOfJointForEachBody*rejectionSamplingFrame;
+                                velocityIndex=velocityIndex-NumberOfVelocity * NumberOfJointForEachBody*rejectionSamplingFrame;
+                                accelerationIndex=accelerationIndex-NumberOfAcceleration * NumberOfJointForEachBody*rejectionSamplingFrame;         
                                 //d -> time = d -> time - 0.01*rejectionSamplingFrame;
                                 std::cout << "rejection sampling"<<std::endl;
                                 std::cout << "position.size"<<position.size()<<std::endl;
                                 std::cout << "positionIndex"<<positionIndex<<std::endl; 
 
-                                for(int i=0;i<6;i++){
+                                for(int i=0;i< NumberOfPosition * NumberOfJointForEachBody;i++){
                                     d->qpos[i] = position[positionIndex+i];
                                     d->qvel[i] = velocity[velocityIndex+i];
                                     d->qacc[i] = acceleration[accelerationIndex+i];
@@ -378,9 +377,9 @@ int main(int argc, const char **argv)
             else{
            
                 //std::cout << "simulation time: " << d->time << std::endl; 
-                for ( renderIndex ; renderIndex < position.size(); renderIndex = renderIndex + 6){
+                for ( renderIndex ; renderIndex < position.size(); renderIndex = renderIndex + NumberOfPosition * NumberOfJointForEachBody){
                     mj_step1(m,d);
-                    for (int i = 0; i <6; i++) {
+                    for (int i = 0; i <NumberOfPosition * NumberOfJointForEachBody; i++) {
                     std::cout << "-------------------------------------" << std::endl; 
                     std::cout << "simulation time: " << d->time << std::endl; 
                     std::cout << "renderIndex:" << renderIndex << std::endl;
@@ -423,10 +422,6 @@ int main(int argc, const char **argv)
             
            
         }  
-
-       
-
-       
 
         // get framebuffer viewport
         mjrRect viewport = {0, 0, 0, 0};
